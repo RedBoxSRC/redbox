@@ -1,0 +1,19 @@
+{
+  "name": "@redbox/p2p",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "test": "echo \"no tests yet\""
+  },
+  "dependencies": {
+    "@redbox/core": "workspace:^",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.12",
+    "typescript": "^5.3.3"
+  }
+}

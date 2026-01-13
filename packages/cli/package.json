@@ -1,0 +1,32 @@
+{
+  "name": "redbox",
+  "version": "0.1.0",
+  "bin": {
+    "redbox": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts dev",
+    "test": "echo \"no tests yet\""
+  },
+  "dependencies": {
+    "@redbox/consensus-poa": "workspace:^",
+    "@redbox/consensus-solo": "workspace:^",
+    "@redbox/core": "workspace:^",
+    "@redbox/p2p": "workspace:^",
+    "@redbox/storage-level": "workspace:^",
+    "@redbox/templates-counter": "workspace:^",
+    "@redbox/templates-ledger": "workspace:^",
+    "@redbox/templates-messages": "workspace:^",
+    "@noble/ed25519": "^1.7.5",
+    "commander": "^11.1.0",
+    "fs-extra": "^11.2.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "typescript": "^5.3.3"
+  }
+}
