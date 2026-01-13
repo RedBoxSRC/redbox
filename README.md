@@ -1,4 +1,4 @@
-# Redbox: Mini Blockchain Framework (Beta)
+# RedBox Core v0.8.0-beta — Mini Blockchain Framework
 
 Redbox is an open-source TypeScript framework for spinning up application-specific blockchains by swapping a single state machine module. It bundles a lean node runtime, solo/PoA consensus, LevelDB storage, REST+WS APIs, CLI tooling, pluggable templates, and a tiny explorer—everything runnable locally with Node 20+ and pnpm.
 
