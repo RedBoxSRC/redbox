@@ -48,7 +48,7 @@ pnpm build
 
 Workspace scripts:
 - `pnpm dev` — single-node dev chain + explorer (counter template).
-- `pnpm --filter cli exec redbox ...` — run CLI commands after build.
+- `pnpm --filter ./packages/cli exec redbox ...` — run CLI commands after build.
 - `pnpm --filter explorer dev` — run explorer only.
 
 ## Quick Start (Single Node)
@@ -66,8 +66,15 @@ curl -X POST http://localhost:26657/tx \
   -d '{"type":"inc","payload":{"amount":1}}'
 ```
 
+## Templates
+- **counter**: numeric `value`, tx `{type:"inc", payload:{amount:number}}`.
+- **messages**: append-only log, tx `{type:"message", payload:{message:string}}`.
+- **ledger**: simple balances with signed transfers, tx `{type:"transfer", payload:{to:string, amount:number}, senderPubKey, signature}`.
+
+Switch templates in your config (`stateMachine: "counter" | "messages" | "ledger"`) or scaffold a new project with `redbox init <name> --template <counter|messages|ledger>`. Custom state machines can be used by pointing `stateMachine` to a local module path that exports `initState`, `validateTx`, and `applyTx`.
+
 ## CLI Reference
-- `redbox init <name> --template <counter|messages|ledger>` — scaffold a chain folder.
+- `redbox init <name> --template <counter|messages|ledger>` — scaffold a chain folder (uses templates above).
 - `redbox dev` — single node + explorer (counter).
 - `redbox start --config <file>` — start a node from config (solo or PoA).
 - `redbox keys gen --out <dir>` — generate ed25519 keys.

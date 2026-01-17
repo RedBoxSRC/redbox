@@ -1,4 +1,4 @@
-# REDBOX Beta
+# RedBox Core v0.8.0-beta — Beta Guide
 
 A minimal, modular blockchain framework for spinning up app-specific chains with a pluggable state machine. Everything is TypeScript, runs on Node 20+, and ships with solo/PoA consensus, LevelDB storage, REST+WS APIs, CLI tooling, and a tiny explorer.
 

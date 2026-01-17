@@ -1,0 +1,23 @@
+{
+  "chainId": "redbox-dev",
+  "stateMachine": "counter",
+  "genesis": "/Users/enriquemarrero/redboxblockchain/redbox/packages/cli/.redbox/dev/genesis.json",
+  "key": "/Users/enriquemarrero/redboxblockchain/redbox/packages/cli/.redbox/dev/node-key.json",
+  "consensus": {
+    "type": "solo",
+    "validators": [
+      {
+        "name": "dev-node",
+        "pubKey": "f1e6b3385bc7ca3cc4305a7f9d4c542383bf014574c2cd64a50997af848aed04"
+      }
+    ]
+  },
+  "api": {
+    "port": 26657
+  },
+  "p2p": {
+    "port": 26656,
+    "seeds": []
+  },
+  "storage": "/Users/enriquemarrero/redboxblockchain/redbox/packages/cli/.redbox/dev/data"
+}

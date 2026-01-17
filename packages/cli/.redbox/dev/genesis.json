@@ -1,0 +1,12 @@
+{
+  "chainId": "redbox-dev",
+  "validators": [
+    {
+      "name": "dev-node",
+      "pubKey": "f1e6b3385bc7ca3cc4305a7f9d4c542383bf014574c2cd64a50997af848aed04"
+    }
+  ],
+  "appState": {
+    "value": 0
+  }
+}
