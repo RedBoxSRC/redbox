@@ -40,17 +40,25 @@ class P2PNode extends events_1.EventEmitter {
     constructor(opts) {
         super();
         this.peers = new Set();
+        this.seedSockets = new Map();
         this.opts = opts;
     }
     async start() {
         this.server = new ws_1.WebSocketServer({ port: this.opts.port });
         this.server.on("connection", (ws) => this.handleConnection(ws));
         for (const seed of this.opts.seeds ?? []) {
-            this.connectToPeer(seed);
+            this.connectToSeed(seed);
         }
+        this.reconnectTimer = setInterval(() => this.retrySeeds(), 5000);
     }
     async stop() {
+        if (this.reconnectTimer) {
+            clearInterval(this.reconnectTimer);
+        }
         for (const peer of this.peers) {
+            peer.close();
+        }
+        for (const [, peer] of this.seedSockets) {
             peer.close();
         }
         if (this.server) {
@@ -58,10 +66,10 @@ class P2PNode extends events_1.EventEmitter {
         }
     }
     broadcastTx(tx) {
-        this.broadcast({ type: "tx", tx });
+        this.broadcast({ type: "tx", chainId: this.opts.chainId, tx });
     }
     broadcastBlock(block) {
-        this.broadcast({ type: "block", block });
+        this.broadcast({ type: "block", chainId: this.opts.chainId, block });
     }
     handleConnection(ws) {
         this.peers.add(ws);
@@ -70,13 +78,35 @@ class P2PNode extends events_1.EventEmitter {
         // share status on new connections
         this.send(ws, { type: "status", height: this.opts.getLatestHeight(), chainId: this.opts.chainId });
     }
-    connectToPeer(url) {
+    connectToSeed(url) {
+        const existing = this.seedSockets.get(url);
+        if (existing && (existing.readyState === ws_1.default.OPEN || existing.readyState === ws_1.default.CONNECTING)) {
+            return;
+        }
         const ws = new ws_1.default(url);
+        this.seedSockets.set(url, ws);
         ws.on("open", () => this.handleConnection(ws));
+        ws.on("close", () => {
+            this.peers.delete(ws);
+            this.seedSockets.delete(url);
+        });
+        ws.on("error", () => {
+            this.seedSockets.delete(url);
+            ws.close();
+        });
+    }
+    retrySeeds() {
+        for (const seed of this.opts.seeds ?? []) {
+            this.connectToSeed(seed);
+        }
     }
     async handleMessage(ws, raw) {
         try {
             const msg = JSON.parse(raw);
+            if ("chainId" in msg && msg.chainId !== this.opts.chainId) {
+                ws.close();
+                return;
+            }
             switch (msg.type) {
                 case "status": {
                     if (msg.chainId !== this.opts.chainId) {
@@ -85,7 +115,12 @@ class P2PNode extends events_1.EventEmitter {
                     }
                     const localHeight = this.opts.getLatestHeight();
                     if (msg.height > localHeight) {
-                        this.send(ws, { type: "getBlocks", from: localHeight + 1, to: msg.height });
+                        this.send(ws, {
+                            type: "getBlocks",
+                            chainId: this.opts.chainId,
+                            from: localHeight + 1,
+                            to: msg.height
+                        });
                     }
                     break;
                 }
@@ -102,7 +137,7 @@ class P2PNode extends events_1.EventEmitter {
                         if (block)
                             blocks.push(block);
                     }
-                    this.send(ws, { type: "blocks", blocks });
+                    this.send(ws, { type: "blocks", chainId: this.opts.chainId, blocks });
                     break;
                 }
                 case "blocks":

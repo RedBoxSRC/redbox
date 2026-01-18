@@ -51,13 +51,29 @@ const p2p_1 = require("@redbox/p2p");
 const templates_counter_1 = __importDefault(require("@redbox/templates-counter"));
 const templates_messages_1 = __importDefault(require("@redbox/templates-messages"));
 const templates_ledger_1 = __importDefault(require("@redbox/templates-ledger"));
+const templates_interop_1 = __importDefault(require("@redbox/templates-interop"));
+const templates_checkpoints_1 = __importDefault(require("@redbox/templates-checkpoints"));
 const program = new commander_1.Command();
 program.name("redbox").description("redbox mini blockchain framework");
 const templateRegistry = {
     counter: templates_counter_1.default,
     messages: templates_messages_1.default,
-    ledger: templates_ledger_1.default
+    ledger: templates_ledger_1.default,
+    interop: templates_interop_1.default,
+    checkpoints: templates_checkpoints_1.default
 };
+function defaultAppState(template, validatorPubKey) {
+    switch (template) {
+        case "ledger":
+            return { balances: { [validatorPubKey]: 1000 } };
+        case "interop":
+            return { chains: {}, outbox: [], inbox: [], nextMessageId: 0, admins: [validatorPubKey] };
+        case "checkpoints":
+            return { checkpoints: {}, aggregators: [validatorPubKey] };
+        default:
+            return {};
+    }
+}
 function readJSONMaybeYAML(file) {
     const raw = fs_1.default.readFileSync(file, "utf-8");
     if (file.endsWith(".yaml") || file.endsWith(".yml")) {
@@ -190,7 +206,7 @@ program
     .command("init")
     .description("Initialize a new chain folder")
     .argument("<name>")
-    .requiredOption("-t, --template <template>", "counter|messages|ledger", "counter")
+    .requiredOption("-t, --template <template>", "counter|messages|ledger|interop|checkpoints", "counter")
     .action(async (name, opts) => {
     const dir = path_1.default.resolve(process.cwd(), name);
     await fs_extra_1.default.ensureDir(dir);
@@ -203,7 +219,7 @@ program
     const genesis = {
         chainId,
         validators: [{ name: "validator", pubKey: key.pubKey }],
-        appState: opts.template === "ledger" ? { balances: { [key.pubKey]: 1000 } } : {}
+        appState: defaultAppState(opts.template, key.pubKey)
     };
     const genesisPath = path_1.default.join(dir, "genesis.json");
     await fs_extra_1.default.writeJSON(genesisPath, genesis, { spaces: 2 });

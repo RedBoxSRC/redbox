@@ -39,6 +39,13 @@ class RedboxNode extends events_1.EventEmitter {
             this.latestState = { height: 0, state: initialState };
             // store genesis state for height 0
             const genesisTimestamp = 0;
+            const genesisBlockHash = (0, hash_1.calculateBlockHash)({
+                height: 0,
+                timestamp: genesisTimestamp,
+                prevHash: null,
+                txs: [],
+                proposerPubKey: this.key.pubKey
+            });
             await this.storage.putBlock({
                 height: 0,
                 timestamp: genesisTimestamp,
@@ -46,17 +53,14 @@ class RedboxNode extends events_1.EventEmitter {
                 txs: [],
                 proposerPubKey: this.key.pubKey,
                 signature: "",
-                blockHash: (0, hash_1.calculateBlockHash)({
-                    height: 0,
-                    timestamp: genesisTimestamp,
-                    prevHash: null,
-                    txs: [],
-                    proposerPubKey: this.key.pubKey
-                })
+                blockHash: genesisBlockHash
             }, initialState);
+            this.latestBlockHash = genesisBlockHash;
         }
         else {
             this.latestState = latest;
+            const latestBlock = await this.storage.getBlock(latest.height);
+            this.latestBlockHash = latestBlock?.blockHash;
         }
         if (this.p2p) {
             this.wireP2P(this.p2p);
@@ -117,9 +121,45 @@ class RedboxNode extends events_1.EventEmitter {
         return {
             chainId: this.chainId,
             height: this.getLatestHeight(),
+            latestBlockHash: this.latestBlockHash ?? null,
             mempool: this.mempool.all().length,
             consensus: this.consensus.type,
             validators: this.consensus.validators().map((v) => v.pubKey)
+        };
+    }
+    async getBlocks(from, to) {
+        const upperBound = Math.min(to, this.getLatestHeight());
+        const blocks = [];
+        for (let h = from; h <= upperBound; h++) {
+            const block = await this.storage.getBlock(h);
+            if (block) {
+                blocks.push(block);
+            }
+        }
+        return blocks;
+    }
+    async getStateAtHeight(height) {
+        const target = typeof height === "number" ? height : this.getLatestHeight();
+        if (target < 0 || target > this.getLatestHeight())
+            return undefined;
+        const state = await this.storage.getState(target);
+        if (state === undefined)
+            return undefined;
+        return { height: target, state };
+    }
+    async exportSnapshot(height) {
+        const target = typeof height === "number" ? height : this.getLatestHeight();
+        if (target < 0 || target > this.getLatestHeight())
+            return undefined;
+        const state = await this.storage.getState(target);
+        const block = await this.storage.getBlock(target);
+        if (!state || !block)
+            return undefined;
+        return {
+            chainId: this.chainId,
+            height: target,
+            blockHash: block.blockHash,
+            state
         };
     }
     async tryProduceBlock() {
@@ -166,7 +206,9 @@ class RedboxNode extends events_1.EventEmitter {
     async commitBlock(block, state) {
         await this.storage.putBlock(block, state);
         this.latestState = { height: block.height, state };
+        this.latestBlockHash = block.blockHash;
         this.emit("block", { block, state });
+        this.emit("status", this.getStatus());
         if (this.p2p) {
             this.p2p.broadcastBlock(block);
         }

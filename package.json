@@ -1,6 +1,6 @@
 {
   "name": "redbox",
-  "version": "0.8.0-beta",
+  "version": "0.8.4",
   "private": true,
   "packageManager": "pnpm@8.15.5",
   "engines": {

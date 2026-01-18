@@ -17,6 +17,7 @@ export declare class RedboxNode extends EventEmitter {
     private produceTimer?;
     private latestState?;
     private processingBlocks;
+    private latestBlockHash?;
     constructor(config: NodeConfig);
     init(): Promise<void>;
     start(): Promise<void>;
@@ -32,12 +33,24 @@ export declare class RedboxNode extends EventEmitter {
     getStatus(): {
         chainId: string;
         height: number;
+        latestBlockHash: string | null;
         mempool: number;
         consensus: string;
         validators: string[];
     };
     getBlock: (height: number) => Promise<Block | undefined>;
     getLatestBlock: () => Promise<Block | undefined>;
+    getBlocks(from: number, to: number): Promise<Block[]>;
+    getStateAtHeight(height?: number): Promise<{
+        height: number;
+        state: any;
+    } | undefined>;
+    exportSnapshot(height?: number): Promise<{
+        chainId: string;
+        height: number;
+        blockHash: string | null;
+        state: any;
+    } | undefined>;
     private tryProduceBlock;
     createAndCommitBlock(txs: Transaction[], height: number): Promise<Block>;
     private commitBlock;

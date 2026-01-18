@@ -1,6 +1,6 @@
 {
   "name": "redbox",
-  "version": "0.8.0-beta",
+  "version": "0.8.4",
   "bin": {
     "redbox": "dist/index.js"
   },
@@ -18,6 +18,8 @@
     "@redbox/p2p": "workspace:^",
     "@redbox/storage-level": "workspace:^",
     "@redbox/templates-counter": "workspace:^",
+    "@redbox/templates-checkpoints": "workspace:^",
+    "@redbox/templates-interop": "workspace:^",
     "@redbox/templates-ledger": "workspace:^",
     "@redbox/templates-messages": "workspace:^",
     "@noble/ed25519": "^1.7.5",

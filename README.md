@@ -1,17 +1,24 @@
-# RedBox Core v0.8.0-beta — Mini Blockchain Framework
+# RedBox Core v0.8.4 — Mini Blockchain Framework
 
 Redbox is an open-source TypeScript framework for spinning up application-specific blockchains by swapping a single state machine module. It bundles a lean node runtime, solo/PoA consensus, LevelDB storage, REST+WS APIs, CLI tooling, pluggable templates, and a tiny explorer—everything runnable locally with Node 20+ and pnpm.
 
 > License & attribution: Redbox is an open-source project licensed under Redbox copyright. Anyone using or redistributing this project must credit Redbox clearly in their documentation and user-facing materials.
+
+## What’s new in v0.8.4
+- New templates: `interop` (message bus + remote chain registry) and `checkpoints` (anchoring remote chain roots).
+- Export endpoints for app-chain integrations: state by height, snapshots with block hash, and bounded block range fetches.
+- P2P resilience: chain-id tagging for gossip, seed reconnection loop, and stricter cross-network protection.
+- WebSocket status broadcasts to keep explorers/integrators in sync.
+- Version bump to v0.8.4 ahead of the public release window.
 
 ## Features
 - Deterministic state machine interface (`initState`, `validateTx`, `applyTx`).
 - Consensus modules: `solo` (single proposer) and `poa` (static validator set, round-robin).
 - P2P gossip + catch-up sync over WebSocket.
 - LevelDB-backed block/state storage (snapshot each height).
-- REST API + WebSocket events.
+- REST API + WebSocket events, plus export endpoints for snapshots and block ranges.
 - CLI for init/start/dev, key/genesis tooling, tx signer, explorer launcher.
-- Templates: `counter`, `messages`, `ledger` (simple balances with signed transfers).
+- Templates: `counter`, `messages`, `ledger` (simple balances with signed transfers), `interop`, and `checkpoints`.
 - Minimal Vite + React explorer for status, blocks, state, and tx submission.
 - TypeScript everywhere; Node.js 20+; pnpm workspaces.
 
@@ -70,11 +77,13 @@ curl -X POST http://localhost:26657/tx \
 - **counter**: numeric `value`, tx `{type:"inc", payload:{amount:number}}`.
 - **messages**: append-only log, tx `{type:"message", payload:{message:string}}`.
 - **ledger**: simple balances with signed transfers, tx `{type:"transfer", payload:{to:string, amount:number}, senderPubKey, signature}`.
+- **interop**: remote-chain registry and message bus, txs: `register-chain`, `route-msg`, `ack-msg`, `ingest-msg` (all signed).
+- **checkpoints**: anchor remote chain roots with signed `submit-checkpoint` txs guarded by an authorized aggregator set.
 
-Switch templates in your config (`stateMachine: "counter" | "messages" | "ledger"`) or scaffold a new project with `redbox init <name> --template <counter|messages|ledger>`. Custom state machines can be used by pointing `stateMachine` to a local module path that exports `initState`, `validateTx`, and `applyTx`.
+Switch templates in your config (`stateMachine: "counter" | "messages" | "ledger" | "interop" | "checkpoints"`) or scaffold a new project with `redbox init <name> --template <counter|messages|ledger|interop|checkpoints>`. Custom state machines can be used by pointing `stateMachine` to a local module path that exports `initState`, `validateTx`, and `applyTx`.
 
 ## CLI Reference
-- `redbox init <name> --template <counter|messages|ledger>` — scaffold a chain folder (uses templates above).
+- `redbox init <name> --template <counter|messages|ledger|interop|checkpoints>` — scaffold a chain folder (uses templates above).
 - `redbox dev` — single node + explorer (counter).
 - `redbox start --config <file>` — start a node from config (solo or PoA).
 - `redbox keys gen --out <dir>` — generate ed25519 keys.
@@ -86,7 +95,7 @@ Switch templates in your config (`stateMachine: "counter" | "messages" | "ledger
 ```json
 {
   "chainId": "redbox-demo",
-  "stateMachine": "counter",               // or path to custom module
+  "stateMachine": "counter",               // or messages|ledger|interop|checkpoints|path to custom module
   "genesis": "./genesis.json",
   "key": "./keys/validator.json",
   "consensus": { "type": "solo", "validators": [{ "name": "val1", "pubKey": "<hex>" }] },
@@ -136,9 +145,12 @@ pnpm --filter cli exec redbox start --config local-poa/nodeC/config.json
 ## APIs
 - `GET /status` — chainId, height, mempool, consensus, validators.
 - `GET /state` — latest state snapshot.
+- `GET /state/:height` — state snapshot at a specific height (404 if not stored).
 - `GET /block/latest` / `/block/:height`
+- `GET /export/snapshot?height=<n>` — chainId, blockHash, state at height (defaults to latest).
+- `GET /export/blocks?from=<n>&to=<m>` — bounded block range export (guarded to 200 block window).
 - `POST /tx` — submit transaction (`type`, `payload`, optional `senderPubKey` + `signature`).
-- WS `/ws` — events `status`, `newBlock`, `newTx`.
+- WS `/ws` — events `status`, `newBlock`, `newTx` (status now broadcasts on every new block).
 
 Examples:
 ```bash

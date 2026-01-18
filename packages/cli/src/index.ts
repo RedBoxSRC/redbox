@@ -21,6 +21,8 @@ import { P2PNode } from "@redbox/p2p";
 import CounterStateMachine from "@redbox/templates-counter";
 import MessagesStateMachine from "@redbox/templates-messages";
 import LedgerStateMachine from "@redbox/templates-ledger";
+import IntegrationStateMachine from "@redbox/templates-interop";
+import CheckpointStateMachine from "@redbox/templates-checkpoints";
 
 const program = new Command();
 program.name("redbox").description("redbox mini blockchain framework");
@@ -44,8 +46,24 @@ interface ConfigFile {
 const templateRegistry: Record<string, StateMachine> = {
   counter: CounterStateMachine,
   messages: MessagesStateMachine,
-  ledger: LedgerStateMachine
+  ledger: LedgerStateMachine,
+  interop: IntegrationStateMachine,
+  checkpoints: CheckpointStateMachine
 };
+type TemplateName = keyof typeof templateRegistry;
+
+function defaultAppState(template: TemplateName, validatorPubKey: string): any {
+  switch (template) {
+    case "ledger":
+      return { balances: { [validatorPubKey]: 1000 } };
+    case "interop":
+      return { chains: {}, outbox: [], inbox: [], nextMessageId: 0, admins: [validatorPubKey] };
+    case "checkpoints":
+      return { checkpoints: {}, aggregators: [validatorPubKey] };
+    default:
+      return {};
+  }
+}
 
 function readJSONMaybeYAML(file: string): any {
   const raw = fs.readFileSync(file, "utf-8");
@@ -185,7 +203,7 @@ program
   .command("init")
   .description("Initialize a new chain folder")
   .argument("<name>")
-  .requiredOption("-t, --template <template>", "counter|messages|ledger", "counter")
+  .requiredOption("-t, --template <template>", "counter|messages|ledger|interop|checkpoints", "counter")
   .action(async (name, opts) => {
     const dir = path.resolve(process.cwd(), name);
     await fsExtra.ensureDir(dir);
@@ -198,7 +216,7 @@ program
     const genesis: GenesisData = {
       chainId,
       validators: [{ name: "validator", pubKey: key.pubKey }],
-      appState: opts.template === "ledger" ? { balances: { [key.pubKey]: 1000 } } : {}
+      appState: defaultAppState(opts.template as TemplateName, key.pubKey)
     };
     const genesisPath = path.join(dir, "genesis.json");
     await fsExtra.writeJSON(genesisPath, genesis, { spaces: 2 });

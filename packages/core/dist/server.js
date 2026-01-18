@@ -17,6 +17,15 @@ async function startApiServer(node, config) {
     app.get("/state", (_req, res) => {
         res.json(node.getState());
     });
+    app.get("/state/:height", async (req, res) => {
+        const height = Number(req.params.height);
+        if (!Number.isFinite(height) || height < 0)
+            return res.status(400).json({ error: "height must be >= 0" });
+        const snapshot = await node.getStateAtHeight(height);
+        if (!snapshot)
+            return res.status(404).json({ error: "state not found" });
+        res.json(snapshot);
+    });
     app.get("/block/latest", async (_req, res) => {
         const block = await node.getLatestBlock();
         if (!block)
@@ -40,6 +49,39 @@ async function startApiServer(node, config) {
             res.status(400).json({ ok: false, error: err.message });
         }
     });
+    app.get("/export/snapshot", async (req, res) => {
+        const heightParam = req.query.height;
+        const height = heightParam !== undefined ? Number(heightParam) : undefined;
+        if (heightParam !== undefined) {
+            if (!Number.isFinite(height) || height < 0) {
+                return res.status(400).json({ error: "height must be >= 0" });
+            }
+        }
+        const snapshot = await node.exportSnapshot(height);
+        if (!snapshot)
+            return res.status(404).json({ error: "snapshot not found" });
+        res.json(snapshot);
+    });
+    app.get("/export/blocks", async (req, res) => {
+        const status = node.getStatus();
+        const latestHeight = status.height ?? 0;
+        const fromParam = req.query.from;
+        const toParam = req.query.to;
+        const from = fromParam ? Number(fromParam) : latestHeight;
+        const to = toParam ? Number(toParam) : latestHeight;
+        if (!Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to < 0) {
+            return res.status(400).json({ error: "from/to must be >= 0" });
+        }
+        if (from > to) {
+            return res.status(400).json({ error: "from must be <= to" });
+        }
+        const maxRange = 200;
+        if (to - from > maxRange) {
+            return res.status(400).json({ error: `range too large; max ${maxRange + 1} blocks` });
+        }
+        const blocks = await node.getBlocks(from, to);
+        res.json({ from, to: Math.min(to, latestHeight), blocks });
+    });
     const server = http_1.default.createServer(app);
     const wss = new ws_1.WebSocketServer({ server, path: "/ws" });
     wss.on("connection", (ws) => {
@@ -50,11 +92,16 @@ async function startApiServer(node, config) {
         const txHandler = (tx) => {
             ws.send(JSON.stringify({ type: "newTx", data: tx }));
         };
+        const statusHandler = (st) => {
+            ws.send(JSON.stringify({ type: "status", data: st }));
+        };
         node.on("block", blockHandler);
         node.on("tx", txHandler);
+        node.on("status", statusHandler);
         ws.on("close", () => {
             node.off?.("block", blockHandler);
             node.off?.("tx", txHandler);
+            node.off?.("status", statusHandler);
         });
     });
     await new Promise((resolve) => {

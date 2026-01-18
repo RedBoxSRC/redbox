@@ -69,9 +69,15 @@ importers:
       '@redbox/storage-level':
         specifier: workspace:^
         version: link:../storage-level
+      '@redbox/templates-checkpoints':
+        specifier: workspace:^
+        version: link:../templates/checkpoints
       '@redbox/templates-counter':
         specifier: workspace:^
         version: link:../templates/counter
+      '@redbox/templates-interop':
+        specifier: workspace:^
+        version: link:../templates/interop
       '@redbox/templates-ledger':
         specifier: workspace:^
         version: link:../templates/ledger
@@ -175,7 +181,27 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
+  packages/templates/checkpoints:
+    dependencies:
+      '@redbox/core':
+        specifier: workspace:^
+        version: link:../../core
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
   packages/templates/counter:
+    dependencies:
+      '@redbox/core':
+        specifier: workspace:^
+        version: link:../../core
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+
+  packages/templates/interop:
     dependencies:
       '@redbox/core':
         specifier: workspace:^

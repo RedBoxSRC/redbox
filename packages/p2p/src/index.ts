@@ -12,15 +12,17 @@ export interface P2PNodeOptions {
 
 type GossipMessage =
   | { type: "status"; height: number; chainId: string }
-  | { type: "tx"; tx: Transaction }
-  | { type: "block"; block: Block }
-  | { type: "getBlocks"; from: number; to: number }
-  | { type: "blocks"; blocks: Block[] };
+  | { type: "tx"; chainId: string; tx: Transaction }
+  | { type: "block"; chainId: string; block: Block }
+  | { type: "getBlocks"; chainId: string; from: number; to: number }
+  | { type: "blocks"; chainId: string; blocks: Block[] };
 
 export class P2PNode extends EventEmitter implements P2PAdapter {
   private opts: P2PNodeOptions;
   private peers: Set<WebSocket> = new Set();
   private server?: WebSocketServer;
+  private seedSockets: Map<string, WebSocket> = new Map();
+  private reconnectTimer?: NodeJS.Timeout;
 
   constructor(opts: P2PNodeOptions) {
     super();
@@ -31,12 +33,19 @@ export class P2PNode extends EventEmitter implements P2PAdapter {
     this.server = new WebSocketServer({ port: this.opts.port });
     this.server.on("connection", (ws) => this.handleConnection(ws));
     for (const seed of this.opts.seeds ?? []) {
-      this.connectToPeer(seed);
+      this.connectToSeed(seed);
     }
+    this.reconnectTimer = setInterval(() => this.retrySeeds(), 5000);
   }
 
   async stop(): Promise<void> {
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer);
+    }
     for (const peer of this.peers) {
+      peer.close();
+    }
+    for (const [, peer] of this.seedSockets) {
       peer.close();
     }
     if (this.server) {
@@ -45,11 +54,11 @@ export class P2PNode extends EventEmitter implements P2PAdapter {
   }
 
   broadcastTx(tx: Transaction): void {
-    this.broadcast({ type: "tx", tx });
+    this.broadcast({ type: "tx", chainId: this.opts.chainId, tx });
   }
 
   broadcastBlock(block: Block): void {
-    this.broadcast({ type: "block", block });
+    this.broadcast({ type: "block", chainId: this.opts.chainId, block });
   }
 
   private handleConnection(ws: WebSocket): void {
@@ -60,14 +69,37 @@ export class P2PNode extends EventEmitter implements P2PAdapter {
     this.send(ws, { type: "status", height: this.opts.getLatestHeight(), chainId: this.opts.chainId });
   }
 
-  private connectToPeer(url: string): void {
+  private connectToSeed(url: string): void {
+    const existing = this.seedSockets.get(url);
+    if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
     const ws = new WebSocket(url);
+    this.seedSockets.set(url, ws);
     ws.on("open", () => this.handleConnection(ws));
+    ws.on("close", () => {
+      this.peers.delete(ws);
+      this.seedSockets.delete(url);
+    });
+    ws.on("error", () => {
+      this.seedSockets.delete(url);
+      ws.close();
+    });
+  }
+
+  private retrySeeds(): void {
+    for (const seed of this.opts.seeds ?? []) {
+      this.connectToSeed(seed);
+    }
   }
 
   private async handleMessage(ws: WebSocket, raw: string): Promise<void> {
     try {
       const msg = JSON.parse(raw) as GossipMessage;
+      if ("chainId" in msg && msg.chainId !== this.opts.chainId) {
+        ws.close();
+        return;
+      }
       switch (msg.type) {
         case "status": {
           if (msg.chainId !== this.opts.chainId) {
@@ -76,7 +108,12 @@ export class P2PNode extends EventEmitter implements P2PAdapter {
           }
           const localHeight = this.opts.getLatestHeight();
           if (msg.height > localHeight) {
-            this.send(ws, { type: "getBlocks", from: localHeight + 1, to: msg.height });
+            this.send(ws, {
+              type: "getBlocks",
+              chainId: this.opts.chainId,
+              from: localHeight + 1,
+              to: msg.height
+            });
           }
           break;
         }
@@ -92,7 +129,7 @@ export class P2PNode extends EventEmitter implements P2PAdapter {
             const block = await this.opts.getBlock(h);
             if (block) blocks.push(block);
           }
-          this.send(ws, { type: "blocks", blocks });
+          this.send(ws, { type: "blocks", chainId: this.opts.chainId, blocks });
           break;
         }
         case "blocks":

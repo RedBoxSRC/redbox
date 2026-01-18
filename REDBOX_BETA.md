@@ -1,6 +1,11 @@
-# RedBox Core v0.8.0-beta — Beta Guide
+# RedBox Core v0.8.4 — Beta Guide
 
 A minimal, modular blockchain framework for spinning up app-specific chains with a pluggable state machine. Everything is TypeScript, runs on Node 20+, and ships with solo/PoA consensus, LevelDB storage, REST+WS APIs, CLI tooling, and a tiny explorer.
+
+## v0.8.4 highlights
+- New templates: `interop` (app-chain message bus + registry) and `checkpoints` (remote root anchoring).
+- Integration endpoints: `/state/:height`, `/export/snapshot`, `/export/blocks` for safer syncing/export.
+- P2P hardening with chain-id tagged gossip and seed reconnection.
 
 ## Prerequisites
 - Node.js 20+
@@ -26,7 +31,7 @@ packages/
   consensus-solo/      # single leader
   consensus-poa/       # round-robin PoA
   cli/                 # redbox CLI
-  templates/           # counter/messages/ledger state machines
+  templates/           # counter/messages/ledger/interop/checkpoints state machines
 apps/explorer/         # Vite + React explorer
 docs/ARCHITECTURE.md   # overview
 REDBOX_BETA.md         # this guide
@@ -59,7 +64,7 @@ pnpm --filter cli exec redbox start --config ./mychain/config.json
 ```json
 {
   "chainId": "redbox-demo",
-  "stateMachine": "counter",               // or path to custom module
+  "stateMachine": "counter",               // or messages|ledger|interop|checkpoints|path to custom module
   "genesis": "./genesis.json",
   "key": "./keys/validator.json",
   "consensus": { "type": "solo", "validators": [{ "name": "val1", "pubKey": "<hex>" }] },
@@ -168,9 +173,12 @@ pnpm --filter cli exec redbox start --config local-poa/nodeC/config.json
 ## APIs (REST + WS)
 - `GET /status` — chainId, height, mempool, consensus, validators.
 - `GET /state` — latest state snapshot.
+- `GET /state/:height` — snapshot at a specific height.
 - `GET /block/latest` / `/block/:height`
+- `GET /export/snapshot?height=<n>` — blockHash + state export (defaults to latest).
+- `GET /export/blocks?from=<n>&to=<m>` — bounded block range export (200 block window).
 - `POST /tx` — submit transaction (`type`, `payload`, optional `senderPubKey` + `signature`).
-- WS `/ws` — events `status`, `newBlock`, `newTx`.
+- WS `/ws` — events `status`, `newBlock`, `newTx` (status broadcasts on each block).
 
 ### curl examples
 Counter increment:
@@ -222,7 +230,7 @@ export default MyModule;
 3. Start via `redbox start --config ...`. The module must be deterministic (no time/rand), and `validateTx/applyTx` must be pure.
 
 ## CLI Reference
-- `redbox init <name> --template <counter|messages|ledger>` — scaffold a chain folder.
+- `redbox init <name> --template <counter|messages|ledger|interop|checkpoints>` — scaffold a chain folder.
 - `redbox dev` — single node + explorer (counter).
 - `redbox start --config <file>` — start a node from config.
 - `redbox keys gen --out <dir>` — generate ed25519 keys.
