@@ -1,4 +1,4 @@
-# RedBox Core v0.8.4 Architecture
+# RedBox Core v0.8.7 Architecture
 
 ## Components
 - **Core (@redbox/core)**: defines types, hashing, key utilities, mempool, and the `RedboxNode` runtime that wires the state machine, consensus, storage, HTTP/WS API, and optional P2P adapter.

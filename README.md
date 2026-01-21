@@ -1,15 +1,14 @@
-# RedBox Core v0.8.4 — Mini Blockchain Framework
+# RedBox Core v0.8.7 — Mini Blockchain Framework
 
 Redbox is an open-source TypeScript framework for spinning up application-specific blockchains by swapping a single state machine module. It bundles a lean node runtime, solo/PoA consensus, LevelDB storage, REST+WS APIs, CLI tooling, pluggable templates, and a tiny explorer—everything runnable locally with Node 20+ and pnpm.
 
 > License & attribution: Redbox is an open-source project licensed under Redbox copyright. Anyone using or redistributing this project must credit Redbox clearly in their documentation and user-facing materials.
 
-## What’s new in v0.8.4
-- New templates: `interop` (message bus + remote chain registry) and `checkpoints` (anchoring remote chain roots).
-- Export endpoints for app-chain integrations: state by height, snapshots with block hash, and bounded block range fetches.
-- P2P resilience: chain-id tagging for gossip, seed reconnection loop, and stricter cross-network protection.
-- WebSocket status broadcasts to keep explorers/integrators in sync.
-- Version bump to v0.8.4 ahead of the public release window.
+## What’s new in v0.8.7
+- Explorer promoted to a control room: live block timeline, mempool/tx stream, snapshot viewer, and richer block metadata.
+- Explorer auto-connects to the local node and can launch in your browser automatically from `redbox dev`/`redbox explorer` (disable with `--no-open`).
+- UI refresh with clearer typography, darker theme, and quick presets for testing transactions.
+- Version bump to v0.8.7 for the latest release.
 
 ## Features
 - Deterministic state machine interface (`initState`, `validateTx`, `applyTx`).

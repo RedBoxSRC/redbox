@@ -1,11 +1,11 @@
-# RedBox Core v0.8.4 — Beta Guide
+# RedBox Core v0.8.7 — Beta Guide
 
 A minimal, modular blockchain framework for spinning up app-specific chains with a pluggable state machine. Everything is TypeScript, runs on Node 20+, and ships with solo/PoA consensus, LevelDB storage, REST+WS APIs, CLI tooling, and a tiny explorer.
 
-## v0.8.4 highlights
-- New templates: `interop` (app-chain message bus + registry) and `checkpoints` (remote root anchoring).
-- Integration endpoints: `/state/:height`, `/export/snapshot`, `/export/blocks` for safer syncing/export.
-- P2P hardening with chain-id tagged gossip and seed reconnection.
+## v0.8.7 highlights
+- Explorer promoted to a control room: live block timeline, mempool stream, richer block details, and snapshot viewer.
+- CLI now auto-opens the explorer when you run `redbox dev` or `redbox explorer` (toggle with `--no-open`).
+- Visual refresh for the explorer to make tx testing and monitoring clearer.
 
 ## Prerequisites
 - Node.js 20+

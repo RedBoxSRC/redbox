@@ -88,6 +88,18 @@ async function readKey(file: string): Promise<NodeKey> {
   return key;
 }
 
+function openInBrowser(url: string): void {
+  const platform = process.platform;
+  const command = platform === "darwin" ? "open" : platform === "win32" ? "cmd" : "xdg-open";
+  const args = platform === "win32" ? ["/c", "start", "", url] : [url];
+  try {
+    const child = spawn(command, args, { stdio: "ignore", detached: true, shell: platform === "win32" });
+    child.unref();
+  } catch {
+    // best effort only
+  }
+}
+
 async function startNodeFromConfig(configPath: string): Promise<RedboxNode> {
   const abs = path.resolve(configPath);
   const cfg = readJSONMaybeYAML(abs) as ConfigFile;
@@ -150,7 +162,10 @@ program
 program
   .command("dev")
   .description("Run a local single-node devnet and explorer")
-  .action(async () => {
+  .option("--ui-port <port>", "explorer port", "5173")
+  .option("--ui-host <host>", "explorer host", "0.0.0.0")
+  .option("--no-open", "do not launch the explorer UI")
+  .action(async (opts) => {
     const base = path.join(process.cwd(), ".redbox", "dev");
     await fsExtra.ensureDir(base);
     const keyPath = path.join(base, "node-key.json");
@@ -178,10 +193,20 @@ program
     };
     const node = await startNodeFromConfig(writeTempConfig(base, config));
     console.log("Dev node running on http://localhost:26657");
-    const explorer = spawn("pnpm", ["--filter", "explorer", "dev", "--", "--host", "0.0.0.0"], {
-      stdio: "inherit",
-      cwd: path.join(process.cwd())
-    });
+    const explorerHost = opts.uiHost as string;
+    const explorerPort = opts.uiPort as string;
+    const explorer = spawn(
+      "pnpm",
+      ["--filter", "explorer", "dev", "--", "--host", explorerHost, "--port", explorerPort],
+      {
+        stdio: "inherit",
+        cwd: path.join(process.cwd())
+      }
+    );
+    if (opts.open !== false) {
+      const openHost = explorerHost === "0.0.0.0" ? "localhost" : explorerHost;
+      setTimeout(() => openInBrowser(`http://${openHost}:${explorerPort}`), 1200);
+    }
     explorer.on("exit", async () => {
       await node.stop();
       process.exit(0);
@@ -298,12 +323,17 @@ program
   .description("Run the explorer UI")
   .option("--host <host>", "host", "0.0.0.0")
   .option("--port <port>", "port", "5173")
+  .option("--no-open", "do not launch the explorer in your browser")
   .action((opts) => {
     const child = spawn(
       "pnpm",
       ["--filter", "explorer", "dev", "--", "--host", opts.host, "--port", opts.port],
       { stdio: "inherit", cwd: path.join(process.cwd()) }
     );
+    if (opts.open !== false) {
+      const openHost = opts.host === "0.0.0.0" ? "localhost" : opts.host;
+      setTimeout(() => openInBrowser(`http://${openHost}:${opts.port}`), 800);
+    }
     child.on("exit", (code) => process.exit(code ?? 0));
   });
 
